@@ -1,0 +1,217 @@
+import os
+import requests
+
+from pdf import pdf_vector_search
+from trends import normalized_yearly_trend
+from dotenv import load_dotenv
+from langchain.agents import AgentExecutor, create_structured_chat_agent
+from langchain.memory import ConversationBufferMemory
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.tools import Tool
+from langchain_openai import ChatOpenAI
+
+load_dotenv()
+
+#Tool for searching from Wikipedia
+def search_wikipedia(query):
+    from wikipedia import summary
+
+    try:
+        return summary(query)
+    except:
+        return "I couldn't find any information on that."
+
+#Simple Web search tool
+def search_web(query: str) -> str:
+    """Use the tool."""
+    from tavily import TavilyClient
+
+    api_key = os.getenv("TAVILY_API_KEY")
+    client = TavilyClient(api_key=api_key)
+    results = client.search(query=query)
+    return f"Search results for: {query}\n\n\n{results}\n"
+
+#Fetches the most cited articles about given query
+def fetch_articles(query, total_results=10, count_per_request=10):
+    url = "https://api.elsevier.com/content/search/scopus"
+    headers = {
+        "X-ELS-APIKey": os.getenv("ELSEVIER_API_KEY"),
+        "Accept": "application/json"
+    }
+    articles = []
+    start = 0
+
+    #query_string = " AND ".join(keywords) - use if multiple keywords are used
+    date_range = "PUBYEAR > 2019"
+
+    while len(articles) < total_results:
+        params = {
+            "query": f"{query} AND {date_range}",
+            "count": count_per_request,
+            "start": start,
+            "sort": "citedby-count",
+            "sort-order": "desc",            
+        }
+
+        # Make the API request
+        response = requests.get(url, headers=headers, params=params)
+
+        # Check if the request was successful
+        if response.status_code != 200:
+            print("Error:", response.status_code, response.text)
+            break
+
+        data = response.json()
+        entries = data.get("search-results", {}).get("entry", [])
+
+        # If no entries returned, break the loop
+        if not entries:
+            break
+
+        for item in entries:
+            articles.append({
+                "title": item.get('dc:title'),
+                "authors": item.get('dc:creator'),
+                "publication_name": item.get('prism:publicationName'),
+                "citations": item.get('citedby-count', 0),
+                "pub_year": item.get('prism:coverDate', '').split("-")[0]
+            })
+
+        start += count_per_request  # Move to the next page
+
+    article_strings = []
+    for article in articles:
+        # Extract author names (assuming they are a string of names separated by commas)
+        authors = article['authors'] or "Unknown Author"
+        # Format the citation in APA style
+        article_info = (
+            f"{authors} ({article['pub_year']}). "
+            f"{article['title']}."
+        )
+        article_strings.append(article_info)
+    
+    return "\n\n".join(article_strings)
+
+tools = [
+    Tool(
+        name="Articles",
+        func=fetch_articles,
+        description="Search scientific articles related to a given topic. Useful for finding relevant research and publications.",
+    ),
+    Tool(
+        name="Web",
+        func=search_web,
+        description="Search the web for information about a given query. Useful for market analysis and competitor research.",
+    ),
+    Tool(
+        name="UPM report",
+        func=pdf_vector_search,
+        description="UPM latest annual report for searching information about current operations and businesses. Useful for checkin that the idea is not already implemented at UPM. Use simple string as a query (e.g., 'Recyclable packaking').",
+    ),
+    Tool(
+        name="Wikipedia",
+        func=search_wikipedia,
+        description="Retrieve a summary of a topic from Wikipedia. Input must be a single keyword or topic name (e.g., 'Renewable Energy').",
+    ),
+    #Tool(
+    #    name="Trends",
+    #    func=normalized_yearly_trend,
+    #    description="Analyze normalized yearly trends in search interest for a specified keyword. Useful for identifying growth patterns and market demand.",
+    #),
+]
+#System prompt for the model
+system = '''The human is going to propose you an innovation idea that would be used in UPM-Kymmene Oyj which is a Finnish forest industry company.
+UPM operates in six business areas: UPM Fibres, UPM Energy, UPM Raflatac, UPM Specialty Papers, UPM Communication Papers, and UPM Plywood.
+The idea might be either a totally new product or business area or an incremental improvement to existing processes.
+
+Your task is to evaluate if the idea has potential for UPM and enhance the idea even further.
+Be strict with your evaluation! Not all ideas are viable and we do not want to waste resources with bad ideas.
+
+You have access to the following tools:
+
+{tools}
+
+Please, use multiple tools every time.
+
+Valid actions to take are: "Final Answer", or {tool_names}
+Provide only ONE action per $JSON_BLOB, as shown:
+```
+{{
+  "action": '$TOOL_NAME'
+  "action_input": $INPUT
+}}
+
+OR
+
+{{
+  "action": "Final Answer",
+  "action_input": 
+    "
+    1) Idea description and evaluation
+    2) Strategic fit to UPM's businesses
+    3) Potential market size or savings
+    4) Sustainability value promise
+    5) A few relevant scientific articles
+    "  
+}}
+
+```
+
+'''
+
+human = '''{input}
+
+{agent_scratchpad}
+
+IMPORTANT (reminder to respond in a JSON blob no matter what and use MULTIPLE tools)
+'''
+#Initial chat prompts as defined above
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", system),
+        MessagesPlaceholder("chat_history", optional=True),
+        ("human", human),
+    ]
+)
+
+#LLM model - change if other is used
+llm = ChatOpenAI(
+    model="gpt-4o", temperature=0.4
+)
+#Very simple conversation memory that fills quickly
+memory = ConversationBufferMemory(
+    memory_key="chat_history", return_messages=True)
+
+agent = create_structured_chat_agent(llm=llm, tools=tools, prompt=prompt)
+
+agent_executor = AgentExecutor.from_agent_and_tools(
+    agent=agent,
+    tools=tools,
+    verbose=True,
+    memory=memory,
+    handle_parsing_errors=True,
+)
+
+# Chat, breaks with keyword "exit"
+while True:
+    user_input = input("User: ")
+    if user_input.lower() == "exit":
+        break
+    if user_input.lower() == "reset":
+        memory.clear()
+        print("Context has been reset.")
+        continue
+
+
+    memory.chat_memory.add_message(HumanMessage(content=user_input))
+
+    try:
+        response = agent_executor.invoke({"input": user_input})
+    except Exception as e:
+        response = {"output": f"Error processing your request: {str(e)}"}
+    print("Bot:", response["output"])
+
+    memory.chat_memory.add_message(AIMessage(content=response["output"]))
+
+    
