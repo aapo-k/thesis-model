@@ -121,11 +121,9 @@ tools = [
     #),
 ]
 #System prompt for the model
-system = '''The human is going to propose you an innovation idea that would be used in UPM-Kymmene Oyj which is a Finnish forest industry company.
-UPM operates in six business areas: UPM Fibres, UPM Energy, UPM Raflatac, UPM Specialty Papers, UPM Communication Papers, and UPM Plywood.
-The idea might be either a totally new product or business area or an incremental improvement to existing processes.
+system = '''The human is going to propose you an innovation idea that would be used in the following company -- information about the company
 
-Your task is to evaluate if the idea has potential for UPM and enhance the idea even further.
+Your task is to evaluate if the idea has potential for the company and enhance the idea even further.
 Be strict with your evaluation! Not all ideas are viable and we do not want to waste resources with bad ideas.
 
 You have access to the following tools:
@@ -149,7 +147,7 @@ OR
   "action_input": 
     "
     1) Idea description and evaluation
-    2) Strategic fit to UPM's businesses
+    2) Strategic fit to company's businesses
     3) Potential market size or savings
     4) Sustainability value promise
     5) A few relevant scientific articles

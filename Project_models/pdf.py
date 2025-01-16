@@ -9,7 +9,7 @@ load_dotenv()
 
 #Make sure this is the location of your pdf file
 file_path = (
-    r"C:\Users\k425523\Downloads\upm-annual-report-2023 (1).pdf"
+    "file path"
 )
 
 #Loads pdf page by page

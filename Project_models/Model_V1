@@ -104,9 +104,9 @@ tools = [
         description="Search the web for information about a given query. Useful for market analysis and competitor research.",
     ),
     Tool(
-        name="UPM report",
+        name="report",
         func=pdf_vector_search,
-        description="UPM latest annual report for searching information about current operations and businesses. Useful for checkin that the idea is not already implemented at UPM. Use simple string as a query (e.g., 'Recyclable packaking').",
+        description="latest annual report for searching information about current operations and businesses. Useful for checkin that the idea is not already implemented at the company. Use simple string as a query (e.g., 'Recyclable packaking').",
     ),
     Tool(
         name="Wikipedia",
@@ -120,11 +120,9 @@ tools = [
     #),
 ]
 
-system = '''The human is going to propose you an innovation idea that would be used in UPM-Kymmene Oyj which is a Finnish forest industry company.
-UPM operates in six business areas: UPM Fibres, UPM Energy, UPM Raflatac, UPM Specialty Papers, UPM Communication Papers, and UPM Plywood.
-The idea might be either a totally new product or business area or an incremental improvement to existing processes.
+system = '''The human is going to propose you an innovation idea that would be used in the following company -- information about the company
 
-Your task is to evaluate if the idea has potential for UPM and enhance the idea even further.
+Your task is to evaluate if the idea has potential for the company and enhance the idea even further.
 IF THE IDEA IS BAD, DO NOT CONTINUE! BE STRICT!
 
 You have access to the following tools:
@@ -133,7 +131,7 @@ You have access to the following tools:
 
 In the Final Answer provide the following:
 1) Idea description
-2) Strategic fit to UPM's businesses
+2) Strategic fit to company's businesses
 3) Potential market size or savings
 4) Sustainability value promise
 5) Relevant scientific articles provided by Tool 'Articles' (Author, Title, Year)
