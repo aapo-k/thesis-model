@@ -105,9 +105,9 @@ tools = [
         description="Search the web for information about a given query. Useful for market analysis and competitor research.",
     ),
     Tool(
-        name="UPM report",
+        name="PDF report",
         func=pdf_vector_search,
-        description="UPM latest annual report for searching information about current operations and businesses. Useful for checkin that the idea is not already implemented at UPM. Use simple string as a query (e.g., 'Recyclable packaking').",
+        description="Latest annual report for searching information about current operations and businesses. Useful for checkin that the idea is not already implemented at the company. Use simple string as a query (e.g., 'Recyclable packaking').",
     ),
     Tool(
         name="Wikipedia",
