@@ -29,7 +29,7 @@ async def save_pdf_as_txt(file_path, save_path):
 
 # Define the PDF path and run the function
 file_path = (
-    r"C:\Users\k425523\Downloads\upm-annual-report-2023 (1).pdf"
+    "file path"
 )
 
 async def main():
